@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = { file = "LICENSE" }
 authors = [
-  { name = "Zolelot Contributors" }
+  { name = "bilbo-22" }
 ]
 keywords = ["bimaru", "battleship", "puzzle", "solver", "logic"]
 classifiers = [
