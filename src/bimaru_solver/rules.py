@@ -793,22 +793,18 @@ def _propagate_basic(board: PuzzleBoard, max_iterations: int = 50) -> bool:
                 cell = board.cells[r][c]
                 if not cell.is_hint or cell.state != CellState.SHIP:
                     continue
-                # Get solution neighbors to determine hint shape
-                neighbors = [
-                    (r - 1, c, board.get_solution_at(r - 1, c)),
-                    (r + 1, c, board.get_solution_at(r + 1, c)),
-                    (r, c - 1, board.get_solution_at(r, c - 1)),
-                    (r, c + 1, board.get_solution_at(r, c + 1)),
-                ]
-                for nr, nc, sol_val in neighbors:
+                if cell.hint_shape is None:
+                    continue
+                for (dr, dc), expected in cell.hint_shape.items():
+                    nr, nc = r + dr, c + dc
                     if not board.within_bounds(nr, nc):
                         continue
                     if board.cells[nr][nc].state != CellState.EMPTY:
                         continue
-                    if sol_val == CellState.SHIP:
+                    if expected == CellState.SHIP:
                         board.cells[nr][nc].state = CellState.SHIP
                         progress = True
-                    elif sol_val == CellState.SEA:
+                    elif expected == CellState.SEA:
                         board.cells[nr][nc].state = CellState.SEA
                         progress = True
 
@@ -849,21 +845,17 @@ def _propagate_basic(board: PuzzleBoard, max_iterations: int = 50) -> bool:
                 cell = board.cells[r][c]
                 if not cell.is_hint or cell.state != CellState.SHIP:
                     continue
-                # Check if any neighbor contradicts the hint's known shape
-                neighbors = [
-                    (r - 1, c, board.get_solution_at(r - 1, c)),
-                    (r + 1, c, board.get_solution_at(r + 1, c)),
-                    (r, c - 1, board.get_solution_at(r, c - 1)),
-                    (r, c + 1, board.get_solution_at(r, c + 1)),
-                ]
-                for nr, nc, sol_val in neighbors:
+                if cell.hint_shape is None:
+                    continue
+                for (dr, dc), expected in cell.hint_shape.items():
+                    nr, nc = r + dr, c + dc
                     if not board.within_bounds(nr, nc):
                         continue
                     placed = board.cells[nr][nc].state
                     if placed == CellState.EMPTY:
                         continue
-                    # If placed value contradicts solution, inconsistent
-                    if placed != sol_val:
+                    # If placed value contradicts hint metadata, inconsistent.
+                    if placed != expected:
                         return False
 
         # Check fleet consistency - reject invalid fleet compositions
@@ -899,17 +891,18 @@ class _IncrementalPropagator:
                     self.row_empties[r] += 1
                     self.col_empties[c] += 1
 
-        # Precompute hint constraints
+        # Precompute hint constraints from hint_shape metadata.
         self.hint_constraints = {}
         for r in range(self.dim):
             for c in range(self.dim):
                 cell = board.cells[r][c]
                 if cell.is_hint and cell.state == CellState.SHIP:
-                    for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                    if cell.hint_shape is None:
+                        continue
+                    for (dr, dc), expected in cell.hint_shape.items():
                         nr, nc = r + dr, c + dc
                         if 0 <= nr < self.dim and 0 <= nc < self.dim:
-                            sol_val = board.get_solution_at(nr, nc)
-                            self.hint_constraints[(nr, nc)] = sol_val
+                            self.hint_constraints[(nr, nc)] = expected
 
     def test_ship(self, r: int, c: int) -> bool:
         """Test if placing ship at (r,c) causes contradiction. Returns True if contradiction."""
